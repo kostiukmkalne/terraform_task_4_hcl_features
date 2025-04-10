@@ -1,12 +1,12 @@
 resource "azurerm_virtual_machine" "main" {
   depends_on = [azurerm_network_interface.main]
-  count      = length(var.locations)
+  for_each   = toset(var.locations)
 
-  name                  = "${var.prefix}-vm-${count.index}"
-  location              = var.locations[count.index]
+  name                  = "${var.prefix}-vm-${each.key}"
+  location              = each.value
   resource_group_name   = azurerm_resource_group.example.name
-  network_interface_ids = [azurerm_network_interface.main[local.nic_names[count.index]].id]
-  vm_size = "Standard_DS1_v2"
+  network_interface_ids = [azurerm_network_interface.main[local.nic_names[each.key]].id]
+  vm_size               = "Standard_DS1_v2"
 
   storage_image_reference {
     publisher = "Canonical"
@@ -14,24 +14,29 @@ resource "azurerm_virtual_machine" "main" {
     sku       = "22_04-lts"
     version   = "latest"
   }
+
   storage_os_disk {
-    name              = "myosdisk1${count.index}"
+    name              = "myosdisk1-${each.key}"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
+
   os_profile {
-    computer_name  = "hostname${count.index}"
+    computer_name  = "hostname-${each.key}"
     admin_username = "testadmin"
     admin_password = "Password1234!"
   }
+
   os_profile_linux_config {
     disable_password_authentication = false
   }
+
   tags = {
     environment = var.environment
     owner       = "testadmin"
   }
+
   lifecycle {
     prevent_destroy = true
   }
